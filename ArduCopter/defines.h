@@ -34,6 +34,7 @@
 #define ROLL_PITCH_LOITER           5       // pilot inputs the desired horizontal velocities
 #define ROLL_PITCH_SPORT            6       // pilot inputs roll, pitch rotation rates in earth frame
 #define ROLL_PITCH_AUTOTUNE         7       // description of new roll-pitch mode
+#define ROLL_PITCH_HYBRID           8       // ST-JD pilot input roll, pitch angles when sticks are moved
 
 #define THROTTLE_MANUAL                     0   // manual throttle mode - pilot input goes directly to motors
 #define THROTTLE_MANUAL_TILT_COMPENSATED    1   // mostly manual throttle but with some tilt compensation
@@ -131,7 +132,8 @@
 #define OF_LOITER 10                    // Hold a single location using optical flow sensor
 #define DRIFT 11                        // DRIFT mode (Note: 12 is no longer used)
 #define SPORT 13                        // earth frame rate control
-#define NUM_MODES 14
+#define HYBRID 14                       // ST-JD Hybrid mode = Loiter with direct stick commands
+#define NUM_MODES 15
 
 
 // CH_6 Tuning
@@ -191,6 +193,7 @@
 #define NAV_CIRCLE      1
 #define NAV_LOITER      2
 #define NAV_WP          3
+#define NAV_HYBRID		4	// ST-JD: nav mode, used for initialisation on nav mode change
 
 // Yaw behaviours during missions - possible values for WP_YAW_BEHAVIOR parameter
 #define WP_YAW_BEHAVIOR_NONE                          0   // auto pilot will never control yaw during missions or rtl (except for DO_CONDITIONAL_YAW command received)

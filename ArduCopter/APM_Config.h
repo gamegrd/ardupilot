@@ -25,7 +25,7 @@
 //#define GPS_PROTOCOL          GPS_PROTOCOL_MTK19  // hard cdoe GPS to Mediatek to save 10k of flash
 //#define MOUNT                 DISABLED            // disable the camera gimbal to save 8K of flash space
 //#define AUTOTUNE              DISABLED            // disable the auto tune functionality to save 7k of flash
-//#define OPTFLOW               DISABLED            // disable optical flow sensor to save 5K of flash space
+#define OPTFLOW               DISABLED            // disable optical flow sensor to save 5K of flash space
 //#define AC_FENCE              DISABLED            // disable fence to save 2k of flash
 //#define CAMERA                DISABLED            // disable camera trigger to save 1k of flash
 //#define CONFIG_SONAR          DISABLED            // disable sonar to save 1k of flash
@@ -50,3 +50,16 @@
 //#define USERHOOK_MEDIUMLOOP userhook_MediumLoop();        // for code to be run at 10hz
 //#define USERHOOK_SLOWLOOP userhook_SlowLoop();            // for code to be run at 3.3hz
 //#define USERHOOK_SUPERSLOWLOOP userhook_SuperSlowLoop();  // for code to be run at 1hz
+
+// ST-JD: HYBRID Mode
+#ifndef HYBRID_YAW
+ # define HYBRID_YAW           YAW_HOLD
+#endif
+
+#ifndef HYBRID_RP
+ # define HYBRID_RP            ROLL_PITCH_HYBRID
+#endif
+
+#ifndef HYBRID_THR
+ # define HYBRID_THR           THROTTLE_HOLD
+#endif
