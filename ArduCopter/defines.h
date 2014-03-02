@@ -91,10 +91,6 @@
 #define OCTA_QUAD_FRAME 7
 #define SINGLE_FRAME 8
 
-#define PLUS_FRAME 0
-#define X_FRAME 1
-#define V_FRAME 2
-
 // Internal defines, don't edit and expect things to work
 // -------------------------------------------------------
 
@@ -177,6 +173,13 @@
 #define ACRO_TRAINER_LEVELING   1
 #define ACRO_TRAINER_LIMITED    2
 
+// RC Feel roll/pitch definitions
+#define RC_FEEL_RP_VERY_SOFT        0
+#define RC_FEEL_RP_SOFT             25
+#define RC_FEEL_RP_MEDIUM           50
+#define RC_FEEL_RP_CRISP            75
+#define RC_FEEL_RP_VERY_CRISP       100
+
 // Commands - Note that APM now uses a subset of the MAVLink protocol
 // commands.  See enum MAV_CMD in the GCS_Mavlink library
 #define CMD_BLANK 0 // there is no command stored in the mem location
@@ -223,9 +226,6 @@
 // LAND state
 #define LAND_STATE_FLY_TO_LOCATION  0
 #define LAND_STATE_DESCENDING       1
-
-//repeating events
-#define RELAY_TOGGLE 5
 
 //  Logging parameters
 #define TYPE_AIRSTART_MSG               0x00
@@ -313,8 +313,8 @@
 #define DATA_EPM_ON                     46
 #define DATA_EPM_OFF                    47
 #define DATA_EPM_NEUTRAL                48
-// RADIANS
-#define RADX100 0.000174532925f
+
+// Centi-degrees to radians
 #define DEGX100 5729.57795f
 
 

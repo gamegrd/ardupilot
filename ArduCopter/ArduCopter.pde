@@ -1,6 +1,6 @@
 /// -*- tab-width: 4; Mode: C++; c-basic-offset: 4; indent-tabs-mode: nil -*-
 
-#define THISFIRMWARE "ArduCopter V3.1.1-rc1"
+#define THISFIRMWARE "ArduCopter V3.1.2"
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -115,6 +115,7 @@
 #include <Filter.h>             // Filter library
 #include <AP_Buffer.h>          // APM FIFO Buffer
 #include <AP_Relay.h>           // APM relay
+#include <AP_ServoRelayEvents.h>
 #include <AP_Camera.h>          // Photo or video camera
 #include <AP_Mount.h>           // Camera/Antenna mount
 #include <AP_Airspeed.h>        // needed for AHRS build
@@ -128,6 +129,7 @@
 #include <AP_RCMapper.h>        // RC input mapping library
 #include <AP_Notify.h>          // Notify library
 #include <AP_BattMonitor.h>     // Battery monitor library
+#include <AP_BoardConfig.h>     // board configuration library
 #if SPRAYER == ENABLED
 #include <AC_Sprayer.h>         // crop sprayer library
 #endif
@@ -422,6 +424,9 @@ static int8_t control_mode = STABILIZE;
 // This is set to -1 when we need to re-read the switch
 static uint8_t oldSwitchPosition;
 static RCMapper rcmap;
+
+// board specific config
+static AP_BoardConfig BoardConfig;
 
 // receiver RSSI
 static uint8_t receiver_rssi;
@@ -737,22 +742,6 @@ static int16_t yaw_look_at_heading_slew;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Repeat Mission Scripting Command
-////////////////////////////////////////////////////////////////////////////////
-// The type of repeating event - Toggle a servo channel, Toggle the APM1 relay, etc
-static uint8_t event_id;
-// Used to manage the timimng of repeating events
-static uint32_t event_timer;
-// How long to delay the next firing of event in millis
-static uint16_t event_delay;
-// how many times to fire : 0 = forever, 1 = do once, 2 = do twice
-static int16_t event_repeat;
-// per command value, such as PWM for servos
-static int16_t event_value;
-// the stored value used to undo commands - such as original PWM command
-static int16_t event_undo_value;
-
-////////////////////////////////////////////////////////////////////////////////
 // Delay Mission Scripting Command
 ////////////////////////////////////////////////////////////////////////////////
 static int32_t condition_value;  // used in condition commands (eg delay, change alt, etc.)
@@ -796,6 +785,9 @@ static uint8_t auto_trim_counter;
 
 // Reference to the relay object (APM1 -> PORTL 2) (APM2 -> PORTB 7)
 static AP_Relay relay;
+
+// handle repeated servo and relay events
+static AP_ServoRelayEvents ServoRelayEvents(relay);
 
 //Reference to the camera object (it uses the relay object inside it)
 #if CAMERA == ENABLED
@@ -1259,6 +1251,7 @@ static void update_GPS(void)
 {
     static uint32_t last_gps_reading;           // time of last gps message
     static uint8_t ground_start_count = 10;     // counter used to grab at least 10 reads before commiting the Home location
+    bool report_gps_glitch;
 
     g_gps->update();
 
@@ -1274,13 +1267,14 @@ static void update_GPS(void)
         // run glitch protection and update AP_Notify if home has been initialised
         if (ap.home_is_set) {
             gps_glitch.check_position();
-            if (AP_Notify::flags.gps_glitching != gps_glitch.glitching()) {
+            report_gps_glitch = (gps_glitch.glitching() && !ap.usb_connected);
+            if (AP_Notify::flags.gps_glitching != report_gps_glitch) {
                 if (gps_glitch.glitching()) {
                     Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_GPS_GLITCH);
                 }else{
                     Log_Write_Error(ERROR_SUBSYSTEM_GPS, ERROR_CODE_ERROR_RESOLVED);
                 }
-                AP_Notify::flags.gps_glitching = gps_glitch.glitching();
+                AP_Notify::flags.gps_glitching = report_gps_glitch;
             }
         }
     }
@@ -1573,6 +1567,7 @@ bool set_roll_pitch_mode(uint8_t new_roll_pitch_mode)
 
     switch( new_roll_pitch_mode ) {
         case ROLL_PITCH_STABLE:
+            reset_roll_pitch_in_filters(g.rc_1.control_in, g.rc_2.control_in);
             roll_pitch_initialised = true;
             break;
         case ROLL_PITCH_ACRO:
@@ -1581,9 +1576,12 @@ bool set_roll_pitch_mode(uint8_t new_roll_pitch_mode)
             acro_pitch_rate = 0;
             roll_pitch_initialised = true;
             break;
-        case ROLL_PITCH_AUTO:
         case ROLL_PITCH_STABLE_OF:
         case ROLL_PITCH_DRIFT:
+            reset_roll_pitch_in_filters(g.rc_1.control_in, g.rc_2.control_in);
+            roll_pitch_initialised = true;
+            break;
+        case ROLL_PITCH_AUTO:
         case ROLL_PITCH_LOITER:
         case ROLL_PITCH_SPORT:
             roll_pitch_initialised = true;
@@ -1609,6 +1607,7 @@ bool set_roll_pitch_mode(uint8_t new_roll_pitch_mode)
         case ROLL_PITCH_AUTOTUNE:
             // only enter autotune mode from stabilized roll-pitch mode when armed and flying
             if (roll_pitch_mode == ROLL_PITCH_STABLE && motors.armed() && !ap.land_complete) {
+                reset_roll_pitch_in_filters(g.rc_1.control_in, g.rc_2.control_in);
                 // auto_tune_start returns true if it wants the roll-pitch mode changed to autotune
                 roll_pitch_initialised = auto_tune_start();
             }
@@ -2404,8 +2403,8 @@ static void tuning(){
         break;
 
     case CH6_RELAY:
-        if (g.rc_6.control_in > 525) relay.on();
-        if (g.rc_6.control_in < 475) relay.off();
+        if (g.rc_6.control_in > 525) relay.on(0);
+        if (g.rc_6.control_in < 475) relay.off(0);
         break;
 
 #if FRAME_CONFIG == HELI_FRAME
